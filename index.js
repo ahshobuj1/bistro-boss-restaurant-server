@@ -28,6 +28,7 @@ async function run() {
 
         const menuCollection = client.db('bistroBoss').collection('menu');
         const reviewCollection = client.db('bistroBoss').collection('reviews');
+        const cartCollection = client.db('bistroBoss').collection('carts');
 
         app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray();
@@ -36,6 +37,19 @@ async function run() {
 
         app.get('/reviews', async (req, res) => {
             const result = await reviewCollection.find().toArray();
+            res.send(result);
+        });
+
+        app.get('/carts', async (req, res) => {
+            const email = req.query.email;
+            const query = {email: email};
+            const result = await cartCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        app.post('/carts', async (req, res) => {
+            const cartsData = req.body;
+            const result = await cartCollection.insertOne(cartsData);
             res.send(result);
         });
 
@@ -56,5 +70,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`server in running via: http://localhost:${port}`);
+    console.log(`server is running via: http://localhost:${port}`);
 });
