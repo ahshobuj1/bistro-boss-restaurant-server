@@ -32,10 +32,29 @@ async function run() {
         const cartCollection = client.db('bistroBoss').collection('carts');
         const userCollection = client.db('bistroBoss').collection('users');
 
+        // middlewares
+        const verifyToken = (req, res, next) => {
+            const token = req.headers.authentication.split(' ')[1];
+            console.log(token);
+            if (!token) {
+                return res.status(401).send({message: 'unauthorized access'});
+            }
+
+            jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
+                if (err) {
+                    return res
+                        .status(401)
+                        .send({message: 'unauthorized access'});
+                }
+                req.decoded = decoded;
+                next();
+            });
+        };
+
         // JWT Token
         app.post('/jwt', async (req, res) => {
             const user = req.body;
-            const token = await jwt.sign(user, process.env.JWT_SECRET_KEY, {
+            const token = jwt.sign(user, process.env.JWT_SECRET_KEY, {
                 expiresIn: '1h',
             });
             res.send({token});
@@ -55,7 +74,8 @@ async function run() {
         });
 
         // Users Related API
-        app.get('/users/', async (req, res) => {
+        app.get('/users', verifyToken, async (req, res) => {
+            console.log(req.headers);
             const result = await userCollection.find().toArray();
             res.send(result);
         });
