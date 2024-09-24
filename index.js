@@ -61,7 +61,7 @@ async function run() {
         });
 
         // Make user Admin
-        app.patch('/users/admin', async (req, res) => {
+        app.patch('/users', async (req, res) => {
             const email = req.query.email;
             const query = {email: email};
             const updatedDoc = {
@@ -74,6 +74,18 @@ async function run() {
         });
 
         // Users Related API
+
+        app.get('/users/admin', async (req, res) => {
+            const email = req.query.email;
+            const query = {email: email};
+            const checkUserAdmin = await userCollection.findOne(query);
+            let admin = false;
+            if (checkUserAdmin) {
+                admin = checkUserAdmin.role === 'admin';
+            }
+            res.send({admin});
+        });
+
         app.get('/users', verifyToken, async (req, res) => {
             console.log(req.headers);
             const result = await userCollection.find().toArray();
