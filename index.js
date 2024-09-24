@@ -31,6 +31,19 @@ async function run() {
         const cartCollection = client.db('bistroBoss').collection('carts');
         const userCollection = client.db('bistroBoss').collection('users');
 
+        // Make user Admin
+        app.patch('/users/admin', async (req, res) => {
+            const email = req.query.email;
+            const query = {email: email};
+            const updatedDoc = {
+                $set: {
+                    role: 'admin',
+                },
+            };
+            const result = await userCollection.updateOne(query, updatedDoc);
+            res.send(result);
+        });
+
         // Users Related API
         app.get('/users/', async (req, res) => {
             const result = await userCollection.find().toArray();
