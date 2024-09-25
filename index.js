@@ -51,6 +51,19 @@ async function run() {
             });
         };
 
+        // Use VerifyAdmin after verifyToken
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            console.log('Admin verify', req.decoded.email);
+            const query = {email: email};
+            const user = await userCollection.findOne(query);
+            const isAdmin = user?.role === 'admin';
+            if (!isAdmin) {
+                return res.status(403).send({message: 'forbidden access'});
+            }
+            next();
+        };
+
         // JWT Token
         app.post('/jwt', async (req, res) => {
             const user = req.body;
@@ -61,7 +74,7 @@ async function run() {
         });
 
         // Make user Admin
-        app.patch('/users', async (req, res) => {
+        app.patch('/users', verifyToken, verifyAdmin, async (req, res) => {
             const email = req.query.email;
             const query = {email: email};
             const updatedDoc = {
@@ -75,8 +88,12 @@ async function run() {
 
         // Users Related API
 
-        app.get('/users/admin', async (req, res) => {
+        app.get('/users/admin', verifyToken, async (req, res) => {
             const email = req.query.email;
+            //console.log('user admin ', req.decoded.email);
+            if (!email === req.decoded.email) {
+                return res.status(403).send({message: 'forbidden access'});
+            }
             const query = {email: email};
             const checkUserAdmin = await userCollection.findOne(query);
             let admin = false;
@@ -86,7 +103,7 @@ async function run() {
             res.send({admin});
         });
 
-        app.get('/users', verifyToken, async (req, res) => {
+        app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
             console.log(req.headers);
             const result = await userCollection.find().toArray();
             res.send(result);
@@ -104,7 +121,7 @@ async function run() {
             res.send(result);
         });
 
-        app.delete('/users', async (req, res) => {
+        app.delete('/users', verifyToken, verifyAdmin, async (req, res) => {
             const email = req.query.email;
             const query = {email: email};
             const result = await userCollection.deleteOne(query);
