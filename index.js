@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+const Stripe = require('stripe');
 require('dotenv').config();
 var jwt = require('jsonwebtoken');
 
@@ -9,6 +10,7 @@ const port = process.env.PORT || 5000;
 //middleware
 app.use(cors());
 app.use(express.json());
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const {MongoClient, ServerApiVersion, ObjectId} = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@ecommercedatabase.la5qrjd.mongodb.net/?retryWrites=true&w=majority&appName=ecommerceDatabase`;
@@ -177,8 +179,8 @@ async function run() {
         });
 
         // Cart Related API
-        app.get('/carts', verifyToken, async (req, res) => {
-            const email = req.query.email;
+        app.get('/carts', async (req, res) => {
+            const email = req?.query?.email;
             const query = {email: email};
             const result = await cartCollection.find(query).toArray();
             res.send(result);
@@ -195,6 +197,22 @@ async function run() {
             const query = {_id: new ObjectId(id)};
             const result = await cartCollection.deleteOne(query);
             res.send(result);
+        });
+
+        // Payment Intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const {price} = req.body;
+            const amount = parseInt(price * 100);
+            console.log('api key :', process.env.STRIPE_SECRET_KEY);
+            console.log('payment amount ', amount);
+            // Create a paymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card'],
+            });
+
+            res.send({clientSecret: paymentIntent.client_secret});
         });
 
         // Send a ping to confirm a successful connection
