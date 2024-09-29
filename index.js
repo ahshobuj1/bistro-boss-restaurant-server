@@ -202,7 +202,7 @@ async function run() {
             res.send(result);
         });
 
-        // Payment Intent - Payment Related API
+        // Payment Intent - //Payment Related API
         app.post('/create-payment-intent', async (req, res) => {
             const {price} = req.body;
             const amount = parseInt(price * 100);
@@ -215,7 +215,18 @@ async function run() {
             res.send({clientSecret: paymentIntent.client_secret});
         });
 
-        app.post('/payments', async (req, res) => {
+        app.get('/payments', async (req, res) => {
+            const email = req.query.email;
+            const query = {email: email};
+            const sort = {date: -1};
+            const result = await paymentCollection
+                .find(query)
+                .sort(sort)
+                .toArray();
+            res.send(result);
+        });
+
+        app.post('/payments', verifyToken, async (req, res) => {
             const paymentHistory = req.body;
             const paymentResult = await paymentCollection.insertOne(
                 paymentHistory
