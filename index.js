@@ -33,6 +33,9 @@ async function run() {
         const reviewCollection = client.db('bistroBoss').collection('reviews');
         const cartCollection = client.db('bistroBoss').collection('carts');
         const userCollection = client.db('bistroBoss').collection('users');
+        const paymentCollection = client
+            .db('bistroBoss')
+            .collection('payments');
 
         // middlewares
         const verifyToken = (req, res, next) => {
@@ -199,20 +202,35 @@ async function run() {
             res.send(result);
         });
 
-        // Payment Intent
+        // Payment Intent - Payment Related API
         app.post('/create-payment-intent', async (req, res) => {
             const {price} = req.body;
             const amount = parseInt(price * 100);
-            console.log('api key :', process.env.STRIPE_SECRET_KEY);
-            console.log('payment amount ', amount);
             // Create a paymentIntent with the order amount and currency
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: 'usd',
                 payment_method_types: ['card'],
             });
-
             res.send({clientSecret: paymentIntent.client_secret});
+        });
+
+        app.post('/payments', async (req, res) => {
+            const paymentHistory = req.body;
+            const paymentResult = await paymentCollection.insertOne(
+                paymentHistory
+            );
+            console.log(paymentHistory);
+            const query = {
+                _id: {
+                    $in: paymentHistory.ids.map((id) => new ObjectId(id)),
+                },
+            };
+
+            console.log('deleted query id : ', query);
+
+            const cartResult = await cartCollection.deleteMany(query);
+            res.send({paymentResult, cartResult});
         });
 
         // Send a ping to confirm a successful connection
