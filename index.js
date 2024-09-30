@@ -265,14 +265,62 @@ async function run() {
 
             const revenue = payments[0]?.totalRevenue || 0;
 
-            // Explanation : Not recommended
-            /*  const totalPayments = await paymentCollection.find().toArray();
-            const revenue = totalPayments.reduce(
-                (total, payment) => total + payment.price,
-                0
-            ); */
-
             res.send({products, orders, users, revenue});
+        });
+
+        // Admin order stats ( Aggregate Pipeline ) - category, length and price - for charts
+        app.get('/order-stats', async (req, res) => {
+            const orderStats = await paymentCollection
+                .aggregate([
+                    // Unwind the cartIds array to process each menuId individually
+                    {
+                        $unwind: '$cartIds',
+                    },
+
+                    // Convert cartId to ObjectId
+                    {
+                        $addFields: {
+                            cartToObjectId: {$toObjectId: '$cartIds'},
+                        },
+                    },
+
+                    // Lookup to join with the menuCollection based on _id
+                    {
+                        $lookup: {
+                            from: 'menu',
+                            localField: 'cartToObjectId',
+                            foreignField: '_id',
+                            as: 'menuDetailIds',
+                        },
+                    },
+
+                    // Unwind the menuDetails array (there should only be one element per menuId)
+                    {
+                        $unwind: '$menuDetailIds',
+                    },
+
+                    // Group by category to get total price for each category
+                    {
+                        $group: {
+                            _id: '$menuDetailIds.category',
+                            count: {$sum: 1},
+                            revenue: {$sum: '$menuDetailIds.price'},
+                        },
+                    },
+
+                    // Project the needed fields: price and category
+                    {
+                        $project: {
+                            _id: 0,
+                            category: '$_id',
+                            count: 1,
+                            revenue: 1,
+                        },
+                    },
+                ])
+                .toArray();
+
+            res.send(orderStats);
         });
 
         // Send a ping to confirm a successful connection
