@@ -135,7 +135,8 @@ async function run() {
 
         // Menu Related API
         app.get('/menu', async (req, res) => {
-            const result = await menuCollection.find().toArray();
+            const sort = {date: -1};
+            const result = await menuCollection.find().sort(sort).toArray();
             res.send(result);
         });
 
@@ -242,6 +243,36 @@ async function run() {
 
             const cartResult = await cartCollection.deleteMany(query);
             res.send({paymentResult, cartResult});
+        });
+
+        // Admin Stats
+        app.get('/admin-stats', async (req, res) => {
+            const products = await menuCollection.estimatedDocumentCount();
+            const orders = await paymentCollection.estimatedDocumentCount();
+            const users = await userCollection.estimatedDocumentCount();
+
+            // Aggregate pipeline for all revenue
+            const payments = await paymentCollection
+                .aggregate([
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: {$sum: '$price'},
+                        },
+                    },
+                ])
+                .toArray();
+
+            const revenue = payments[0]?.totalRevenue || 0;
+
+            // Explanation : Not recommended
+            /*  const totalPayments = await paymentCollection.find().toArray();
+            const revenue = totalPayments.reduce(
+                (total, payment) => total + payment.price,
+                0
+            ); */
+
+            res.send({products, orders, users, revenue});
         });
 
         // Send a ping to confirm a successful connection
